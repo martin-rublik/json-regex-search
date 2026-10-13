@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON (jq) Regex Search</title>
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light dark;
+    }
+
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: Canvas;
+      color: CanvasText;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .field {
+      display: grid;
+      gap: .4rem;
+    }
+
+    label {
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      padding: .7rem;
+      font: inherit;
+    }
+
+    button {
+      width: fit-content;
+      padding: .7rem 1.2rem;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .status {
+      margin: 1rem 0;
+      min-height: 1.5rem;
+    }
+
+    .error {
+      color: #c62828;
+      white-space: pre-wrap;
+    }
+
+    .summary {
+      font-weight: 600;
+    }
+
+    .result {
+      border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+      border-radius: 8px;
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+
+    .result-header {
+      padding: .8rem 1rem;
+      background: color-mix(in srgb, CanvasText 8%, Canvas);
+    }
+
+    .path {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+
+    .value {
+      margin-top: .35rem;
+      word-break: break-word;
+    }
+
+    details {
+      border-top: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+    }
+
+    summary {
+      cursor: pointer;
+      padding: .7rem 1rem;
+      font-weight: 600;
+    }
+
+    pre {
+      margin: 0;
+      padding: 1rem;
+      overflow: auto;
+      max-height: 28rem;
+      background: color-mix(in srgb, CanvasText 4%, Canvas);
+    }
+
+    .empty {
+      opacity: .7;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 8px;
+      margin: .75rem 0 1.25rem;
+      overflow: hidden;
+      border-radius: 999px;
+      background: color-mix(in srgb, CanvasText 12%, Canvas);
+    }
+
+    .progress-bar {
+      width: 35%;
+      height: 100%;
+      border-radius: inherit;
+      background: CanvasText;
+      animation: search-progress 1.15s ease-in-out infinite;
+    }
+
+    @keyframes search-progress {
+      0%   { transform: translateX(-110%); }
+      50%  { transform: translateX(95%); }
+      100% { transform: translateX(300%); }
+    }
+
+    small {
+      opacity: .7;
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: .95rem;
+    }
+
+    .results-table th,
+    .results-table td {
+      border: 1px solid color-mix(in srgb, CanvasText 18%, transparent);
+      padding: .65rem .75rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .results-table th {
+      background: color-mix(in srgb, CanvasText 8%, Canvas);
+      position: sticky;
+      top: 0;
+    }
+
+    .results-table td {
+      max-width: 32rem;
+      overflow-wrap: anywhere;
+    }
+
+    .results-table details summary {
+      padding: 0;
+      border: 0;
+    }
+
+    .results-table pre {
+      max-width: 40rem;
+      max-height: 24rem;
+      margin-top: .4rem;
+    }
+
+    .page-footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid color-mix(in srgb, CanvasText 15%, transparent);
+      font-size: .78rem;
+      line-height: 1.5;
+      opacity: .72;
+    }
+
+    .page-footer a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    mark.regex-match {
+      display: inline;
+      background-color: #ffeb3b !important;
+      color: #111 !important;
+      padding: 0 .08em;
+      border-radius: 2px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      forced-color-adjust: none;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>JSON (jq) Regex Search</h1>
+    <p class="empty">Runs locally and offline; no CDN or external libraries required.</p>
+
+    <div class="controls">
+      <div class="field">
+        <label for="jsonFile">JSON file*</label>
+        <input id="jsonFile" type="file" accept=".json,application/json" />
+      </div>
+
+      <div class="field">
+        <label for="regex">Regular expression*</label>
+        <input id="regex" type="text" placeholder="Example: (?i)sam_account_name" />
+      </div>
+
+      <div class="field">
+        <label for="extractFields">(Optional) fields to extract from the top-level object</label>
+        <input id="extractFields" type="text"
+               placeholder="Example: AppId, owner.displayName" />
+        <small>Comma-separated property paths. Nested fields can use dot notation.</small>
+      </div>
+
+      <button id="searchButton" type="button">Search</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="progressContainer" class="progress-container" hidden
+         role="progressbar" aria-label="Search in progress">
+      <div class="progress-bar"></div>
+    </div>
+
+    <div id="results"></div>
+
+    <footer class="page-footer">
+      <div>
+        This standalone utility is provided under the
+        <a href="https://opensource.org/license/mit" target="_blank" rel="noopener noreferrer">MIT License</a>.
+      </div>
+      <div>
+        jq reference: <strong>jq 1.8.2</strong> —
+        source:
+        <a href="https://github.com/jqlang/jq" target="_blank" rel="noopener noreferrer">jqlang/jq</a>;
+        jq is released under the
+        <a href="https://github.com/jqlang/jq/blob/master/COPYING" target="_blank" rel="noopener noreferrer">MIT License</a>.
+      </div>
+      <div>
+        Note: this offline version does <strong>not</strong> bundle jq or jq-web; the search is implemented in vanilla JavaScript
+        and supports jq-style leading regex flags such as <code>(?i)</code>, <code>(?m)</code>, and <code>(?s)</code>.
+      </div>
+    </footer>
+
+  </main>
+
+  <script>
+    const fileInput = document.getElementById("jsonFile");
+    const regexInput = document.getElementById("regex");
+    const extractFieldsInput = document.getElementById("extractFields");
+    const searchButton = document.getElementById("searchButton");
+    const statusElement = document.getElementById("status");
+    const progressContainer = document.getElementById("progressContainer");
+    const resultsElement = document.getElementById("results");
+
+    let loadedJson = null;
+    let loadedFileName = null;
+
+    fileInput.addEventListener("change", async () => {
+      clearOutput();
+
+      const file = fileInput.files?.[0];
+      if (!file) {
+        loadedJson = null;
+        loadedFileName = null;
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        loadedJson = JSON.parse(text);
+        loadedFileName = file.name;
+        setStatus(`Loaded ${file.name}`);
+      } catch (error) {
+        loadedJson = null;
+        loadedFileName = null;
+        showError(`Unable to parse JSON file:\n${error.message}`);
+      }
+    });
+
+    regexInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        runSearch();
+      }
+    });
+
+    searchButton.addEventListener("click", runSearch);
+
+    async function runSearch() {
+      clearOutput();
+
+      if (loadedJson === null) {
+        showError("Please load a JSON file first.");
+        return;
+      }
+
+      const regex = regexInput.value;
+
+      if (!regex) {
+        showError("Please enter a regular expression.");
+        return;
+      }
+
+      try {
+        setSearching(true);
+        setStatus(`Searching ${loadedFileName}...`);
+
+        // Translate jq-style leading inline flags such as (?i) to JS flags.
+        const expression = compileRegex(regex);
+        const matches = await searchJson(loadedJson, expression);
+
+        const extractFields = extractFieldsInput.value
+          .split(",")
+          .map(field => field.trim())
+          .filter(Boolean);
+
+        renderResults(matches, extractFields);
+      } catch (error) {
+        showError(`Search failed:\n${error?.message ?? error}`);
+      } finally {
+        setSearching(false);
+      }
+    }
+
+    function compileRegex(input) {
+      let pattern = input;
+      const flags = new Set(["u"]);
+      // jq permits inline flags; JavaScript requires them separately.
+      while (true) {
+        const match = pattern.match(/^\(\?([ims]+)\)/);
+        if (!match) break;
+        for (const flag of match[1]) flags.add(flag);
+        pattern = pattern.slice(match[0].length);
+      }
+      try {
+        return new RegExp(pattern, [...flags].join(""));
+      } catch (error) {
+        throw new Error(`Invalid regular expression: ${error.message}`);
+      }
+    }
+
+    async function searchJson(root, expression) {
+      const matches = [];
+      const stack = [{ value: root, path: [], parent: null }];
+      let processed = 0;
+
+      while (stack.length) {
+        // Process bounded batches to keep the UI and progress animation responsive.
+        const deadline = performance.now() + 12;
+        do {
+          const item = stack.pop();
+          const { value, path, parent } = item;
+          processed++;
+
+          if (typeof value === "string" && path.at(-1) !== "Id" && expression.test(value)) {
+            const first = path[0];
+            matches.push({
+              path: "." + path.map(segment =>
+                typeof segment === "number" ? `[${segment}]` : segment
+              ).join("."),
+              value,
+              parent,
+              object: path.length === 0 ? root : root[first]
+            });
+          }
+
+          if (value !== null && typeof value === "object") {
+            const keys = Object.keys(value);
+            for (let i = keys.length - 1; i >= 0; i--) {
+              const key = keys[i];
+              stack.push({
+                value: value[key],
+                path: [...path, Array.isArray(value) ? Number(key) : key],
+                parent: value
+              });
+            }
+          }
+        } while (stack.length && performance.now() < deadline);
+
+        if (stack.length) {
+          setStatus(`Searching ${loadedFileName}... ${processed.toLocaleString()} values checked`);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      }
+      return matches;
+    }
+
+    function renderResults(matches, extractFields) {
+      if (!Array.isArray(matches)) {
+        showError("Search returned an unexpected result.");
+        return;
+      }
+
+      setStatus(
+        `${matches.length} match${matches.length === 1 ? "" : "es"} in ${loadedFileName}`
+      );
+
+      if (matches.length === 0) {
+        resultsElement.innerHTML = '<p class="empty">No matches found.</p>';
+        return;
+      }
+
+      const table = document.createElement("table");
+      table.className = "results-table";
+
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+
+      for (const field of [...extractFields, "path", "matches"]) {
+        const th = document.createElement("th");
+        th.textContent = field;
+        headerRow.appendChild(th);
+      }
+
+      const detailsHeader = document.createElement("th");
+      detailsHeader.textContent = "details";
+      headerRow.appendChild(detailsHeader);
+
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+
+      for (const match of matches) {
+        const row = document.createElement("tr");
+
+        for (const field of extractFields) {
+          const td = document.createElement("td");
+          td.textContent = formatCellValue(getNestedValue(match.object, field));
+          row.appendChild(td);
+        }
+
+        const pathCell = document.createElement("td");
+        pathCell.className = "path";
+        pathCell.textContent = match.path;
+        row.appendChild(pathCell);
+
+        const valueCell = document.createElement("td");
+        appendHighlightedValue(
+          valueCell,
+          formatCellValue(match.value),
+          regexInput.value
+        );
+        row.appendChild(valueCell);
+
+        const detailsCell = document.createElement("td");
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = "View";
+        details.append(
+          summary,
+          createInlineJsonBlock("Parent", match.parent),
+          createInlineJsonBlock("Top-level object", match.object)
+        );
+        detailsCell.appendChild(details);
+        row.appendChild(detailsCell);
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      resultsElement.appendChild(table);
+    }
+
+    function createJsonDetails(title, value) {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      const pre = document.createElement("pre");
+
+      summary.textContent = title;
+      pre.textContent = JSON.stringify(value, null, 2);
+
+      details.append(summary, pre);
+      return details;
+    }
+
+    function getNestedValue(object, path) {
+      if (object == null) return undefined;
+
+      return path
+        .split(".")
+        .reduce((current, key) => {
+          if (current == null) return undefined;
+          return current[key];
+        }, object);
+    }
+
+    function appendHighlightedValue(container, text, regexText) {
+      const parsed = parseRegexForHighlight(regexText);
+
+      if (!parsed) {
+        container.textContent = text;
+        return;
+      }
+
+      let regex;
+      try {
+        // Always use global matching so every occurrence can be highlighted.
+        const flags = parsed.flags.includes("g")
+          ? parsed.flags
+          : parsed.flags + "g";
+
+        regex = new RegExp(parsed.pattern, flags);
+      } catch {
+        // If JavaScript cannot represent the jq-style regex exactly,
+        // display the value normally rather than failing the result table.
+        container.textContent = text;
+        return;
+      }
+
+      let lastIndex = 0;
+      let found = false;
+
+      for (const match of text.matchAll(regex)) {
+        found = true;
+        const index = match.index ?? 0;
+
+        if (index > lastIndex) {
+          container.appendChild(
+            document.createTextNode(text.slice(lastIndex, index))
+          );
+        }
+
+        const mark = document.createElement("mark");
+        mark.className = "regex-match";
+        mark.textContent = match[0];
+        container.appendChild(mark);
+
+        lastIndex = index + match[0].length;
+
+        // Avoid problems with zero-length matches.
+        if (match[0].length === 0) {
+          lastIndex = Math.min(lastIndex + 1, text.length);
+        }
+      }
+
+      if (!found) {
+        container.textContent = text;
+        return;
+      }
+
+      if (lastIndex < text.length) {
+        container.appendChild(
+          document.createTextNode(text.slice(lastIndex))
+        );
+      }
+    }
+
+    function parseRegexForHighlight(regexText) {
+      let pattern = regexText;
+      let flags = "";
+
+      // Translate common jq/Oniguruma inline flags such as (?i), (?m), (?s)
+      // into JavaScript RegExp flags for visual highlighting.
+      const flagMatch = pattern.match(/^\(\?([ims]+)\)/);
+
+      if (flagMatch) {
+        flags = flagMatch[1];
+        pattern = pattern.slice(flagMatch[0].length);
+      }
+
+      return { pattern, flags };
+    }
+
+    function formatCellValue(value) {
+      if (value === undefined) return "";
+      if (value === null) return "null";
+      if (typeof value === "string") return value;
+      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      return JSON.stringify(value);
+    }
+
+    function createInlineJsonBlock(title, value) {
+      const wrapper = document.createElement("div");
+      const heading = document.createElement("strong");
+      const pre = document.createElement("pre");
+
+      heading.textContent = title;
+      pre.textContent = JSON.stringify(value, null, 2);
+
+      wrapper.append(heading, pre);
+      return wrapper;
+    }
+
+    function setSearching(searching) {
+      progressContainer.hidden = !searching;
+      searchButton.disabled = searching;
+      fileInput.disabled = searching;
+      regexInput.disabled = searching;
+      extractFieldsInput.disabled = searching;
+    }
+
+    function clearOutput() {
+      statusElement.textContent = "";
+      statusElement.className = "status";
+      resultsElement.replaceChildren();
+    }
+
+    function setStatus(message) {
+      statusElement.className = "status summary";
+      statusElement.textContent = message;
+    }
+
+    function showError(message) {
+      statusElement.className = "status error";
+      statusElement.textContent = message;
+    }
+  </script>
+</body>
+</html>
