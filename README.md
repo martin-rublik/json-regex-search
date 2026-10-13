@@ -8,7 +8,7 @@ Both versions search **string values**, or property names, and skip values whose
 
 ## Browser version
 
-Open [JSON Regex Search](https://martin-rublik.github.io/json-regex-search), select a JSON file, enter a regular expression, and select **Search**. Results include the matching value, its path, and its parent and top-level object. You can also enter comma-separated property paths to display selected fields from each top-level object; nested fields can use dot notation.
+Open [JSON Regex Search](https://martin.rublik.eu/json-regex-search), select a JSON file, enter a regular expression, and select **Search**. Results include the matching value, its path, and its parent and top-level object. You can also enter comma-separated property paths to display selected fields from each top-level object; nested fields can use dot notation.
 
 The browser version processes the selected file locally in your browser; it does not upload the JSON. Its source is in [`docs/`](./docs/).
 
