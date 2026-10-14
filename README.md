@@ -20,6 +20,7 @@ Dot-source the script, then call `Find-JsonMatch` with a regular expression and 
 
 ```powershell
 . ./powershell/Find-JsonMatch.ps1
+. ./powershell/Sort-ObjectProperties.ps1
 Find-JsonMatch -Regex 'sam_account_name' -FileName './export.json'
 ```
 
@@ -35,4 +36,5 @@ Each result contains:
 ## Repository contents
 
 - [`powershell/Find-JsonMatch.ps1`](./powershell/Find-JsonMatch.ps1): PowerShell function backed by `jq`.
+- [`powershell/Find-JsonMatch.ps1`](./powershell/Sort-ObjectProperties.ps1): PowerShell function to sort an object alphabetically. This way the JSON export is easier to compare via traditional diff tools.
 - [`docs/index.html`](./docs/index.html): Standalone browser-based search tool, also published through GitHub Pages.
